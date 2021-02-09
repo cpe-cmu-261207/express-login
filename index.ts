@@ -2,6 +2,10 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import fs from 'fs'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+
+const SECRET_KEY = process.env.SECRET_KEY as string
+const PORT = process.env.PORT || 3000
 
 const app = express()
 app.use(bodyParser.json())
@@ -53,7 +57,24 @@ app.post<any, any, LoginArgs>('/login', (req, res) => {
     res.json({ message: 'Invalid username or password' })
     return
   }
-  res.json(user)
+  const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY)
+  res.json({ token })
 })
 
-app.listen(8000, () => console.log('Server is running at 8000'))
+app.get('/secret', (req, res) => {
+  const token = req.headers.authorization
+  if (!token) {
+    res.status(401)
+    res.json({ message: 'Require authorization header'})
+    return
+  }
+  try {
+    const data = jwt.verify(token.split(" ")[1], SECRET_KEY)
+    res.json(data)
+  } catch(e) {
+    res.status(401)
+    res.json({ message: e.message })
+  }
+})
+
+app.listen(PORT, () => console.log(`Server is running at ${PORT}`))
