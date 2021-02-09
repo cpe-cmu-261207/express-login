@@ -1,6 +1,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import fs from 'fs'
+import bcrypt from 'bcrypt'
 
 const app = express()
 app.use(bodyParser.json())
@@ -25,9 +26,11 @@ app.post<any, any, RegisterArgs>('/register', (req, res) => {
   const body = req.body
   const raw = fs.readFileSync('db.json', 'utf8')
   const db: DbSchema = JSON.parse(raw)
+  const hashPassword = bcrypt.hashSync(body.password, 10)
   db.users.push({
     ...body,
-    id: Date.now()
+    id: Date.now(),
+    password: hashPassword,
   })
   fs.writeFileSync('db.json', JSON.stringify(db))
   res.json({ message: 'Register complete' })
@@ -45,7 +48,7 @@ app.post<any, any, LoginArgs>('/login', (req, res) => {
     res.json({ message: 'Invalid username or password' })
     return
   }
-  if (user.password !== body.password) {
+  if (!bcrypt.compareSync(body.password, user.password)) {
     res.status(400)
     res.json({ message: 'Invalid username or password' })
     return
